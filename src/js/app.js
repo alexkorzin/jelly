@@ -1,33 +1,71 @@
 import Mouse from './Mouse'
 import Ball from './Balls'
+import SvgParse from './SvgParse'
+import * as dat from 'dat.gui';
 
 let canvas = document.querySelector('.canvas');
 let ctx = canvas.getContext('2d');
-let ctxHeight = window.innerHeight;
-let ctxWidth = window.innerWidth;
+let ctxHeight = 860;
+let ctxWidth = 860;
 let mousePos = new Mouse(canvas);
 
-let balls = [];
-let ballsCount = 20;
+// Gradient Yellow
+let grd = ctx.createLinearGradient(ctxHeight / 6, ctxWidth / 8, ctxWidth / 2, 0);
+grd.addColorStop(0, "#FACC2E");
+grd.addColorStop(1, "#FF8000");
+
+// Array of shapes id and settings
+let shapes = [{
+    shape: '#white',
+    x: 0,
+    y: 0,
+    scale: 40,
+    color: 'white',
+    dotsCount: 20
+}, {
+    shape: '#yellow',
+    x: 0,
+    y: 0,
+    scale: 40,
+    color: grd,
+    dotsCount: 10
+}];
+
+// Final objects
+let Objects = []
 
 canvas.height = ctxHeight;
 canvas.width = ctxWidth;
 
-let mouseBall = new Ball(mousePos.x, mousePos.y, 160, 'white');
-
-for (let i = 0; i < ballsCount; i++) {
-    balls.push(new Ball(
-        ctxWidth / 2 + 200 * Math.cos(i / (ballsCount/2)* Math.PI),
-        ctxHeight / 2 + 200 * Math.sin(i / (ballsCount/2)* Math.PI),
-        3
-    ))
+let settingsObj = {
+    spring: 0.9,
+    friction: 0.08,
+    skeleton: false, // Not fill objects if true
+    mouse: false // Draw mouse ball if true
 }
 
-let grd = ctx.createLinearGradient(ctxHeight / 6, ctxWidth/7, ctxWidth / 2, 0);
-grd.addColorStop(0, "red");
-grd.addColorStop(1, "orange");
+var gui = new dat.gui.GUI();
+gui.add(settingsObj, 'spring').min(0.01).max(0.95).step(0.01);
+gui.add(settingsObj, 'friction').min(0.01).max(0.95).step(0.01);
+gui.add(settingsObj, 'skeleton');
+gui.add(settingsObj, 'mouse');
 
-function ConnectDots(dots) {
+let mouseBall = new Ball(mousePos.x, mousePos.y, 160, 'rgba(0,0,0, 0.2)');
+
+// Convert shapes array into final objects
+shapes.forEach(shape => {
+    let object = {};
+    object.color = shape.color;
+    object.dots = [];
+    SvgParse(shape.shape, shape.dotsCount, shape.x, shape.y, shape.scale).forEach(dot => {
+        object.dots.push(new Ball(dot[0], dot[1], 4, 'white'));
+    });
+    Objects.push(object)
+})
+
+// Connect dots with curve line
+function ConnectDots(object) {
+    let dots = object.dots;
     ctx.save();
     ctx.beginPath();
     for (var i = 0, jlen = dots.length; i <= jlen; ++i) {
@@ -36,10 +74,14 @@ function ConnectDots(dots) {
         ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5);
     }
     ctx.closePath();
-    ctx.fillStyle = grd;
+    ctx.fillStyle = object.color;
     ctx.strokeStyle = grd;
-    ctx.fill();
-    // ctx.stroke();
+    ctx.lineWidth = 4;
+    ctx.shadowColor = '#D8D8D8';
+    ctx.shadowBlur = 15;
+    if (settingsObj.skeleton) {
+        ctx.stroke();
+    } else ctx.fill();
     ctx.restore();
 }
 
@@ -47,13 +89,23 @@ function Render() {
     ctx.clearRect(0, 0, ctxWidth, ctxHeight);
 
     mouseBall.updatePosition(mousePos.x, mousePos.y);
-    mouseBall.draw(ctx);
 
-    balls.forEach(ball => {
-        ball.phys(mouseBall, balls);
-        // ball.draw(ctx);
+    // Draw and animate every shape
+    Objects.forEach(object => {
+        ConnectDots(object);
+        object.dots.forEach(dot => {
+            dot.spring();
+            dot.phys(mouseBall);
+            if (settingsObj.skeleton) {
+                dot.draw(ctx);
+            }
+            dot.updateVars(settingsObj);
+        })
     })
-    ConnectDots(balls);
+
+    if(settingsObj.mouse){
+        mouseBall.draw(ctx);
+    }
     requestAnimationFrame(Render);
 }
 

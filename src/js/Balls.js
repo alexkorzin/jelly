@@ -9,17 +9,21 @@ export default class Ball {
         // Phys
         this.vx = 0;
         this.vy = 0;
-        this.friction = 0.8;
-        this.springForce = 0.1;
+        this.friction = 0.9;
+        this.springForce = 0.9;
 
         this.originalX = x || 0;
         this.originalY = y || 0;
-
     }
 
     updatePosition(x, y) {
         this.y = y;
         this.x = x;
+    }
+
+    updateVars(settingsObj){
+        this.friction = settingsObj.friction;
+        this.springForce = settingsObj.spring;
     }
 
     phys(mouse, balls) {
@@ -36,12 +40,6 @@ export default class Ball {
             this.vy += ty - this.y;
         }
 
-        // Spring
-        let dx1 = this.x - this.originalX;
-        let dy1 = this.y - this.originalY;
-        this.vx += -(dx1 * this.springForce);
-        this.vy += -(dy1 * this.springForce);
-
         // Friction
         this.vx *= this.friction;
         this.vy *= this.friction;
@@ -49,11 +47,13 @@ export default class Ball {
         // Final velocity
         this.x += this.vx;
         this.y += this.vy;
+    }
 
-        balls.forEach((ball, current) => {
-            ball.vx += this.vx * 0.001 * current
-            ball.vy += this.vy * 0.001 * current
-        })
+    spring() {
+        let dx1 = this.x - this.originalX;
+        let dy1 = this.y - this.originalY;
+        this.vx += -(dx1 * this.springForce);
+        this.vy += -(dy1 * this.springForce);
     }
 
     draw(ctx) {

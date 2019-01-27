@@ -11,6 +11,7 @@ gulp.task('server', function() {
         server: {
             baseDir: config.dest.root,
         },
+        notify: false,
         files: ['build/*.html', 'build/**/*.css'],
         port: util.env.port || 3000,
         open: false
